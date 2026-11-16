@@ -1,0 +1,5 @@
+# Stays on this computer: the query holds friends' phone numbers,
+# and the CSV holds the full text of their messages.
+krillion.sh
+krillion.csv
+.DS_Store

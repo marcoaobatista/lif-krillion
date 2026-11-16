@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krillion leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --midwater: #0b3a66;   /* page */
+    --trench: #072a4c;     /* recessed panels */
+    --current: #1a5285;    /* raised rows, tracks */
+    --foam: #eef8f8;       /* primary text */
+    --bubble: #a9cbdc;     /* secondary text */
+    --krill: #ff9e8a;      /* the one accent */
+    --lantern: #ffc857;    /* daily winners only */
+    --display: "Bagel Fat One", "Arial Rounded MT Bold", system-ui, sans-serif;
+    --body: "Figtree", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--midwater);
+    color: var(--foam);
+    font: 400 1rem/1.5 var(--body);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 68rem; margin: 0 auto; padding: 0 1rem 5rem; }
+  section { margin-top: 4.5rem; }
+  h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1; }
+  h1 { font-size: clamp(3.2rem, 13vw, 8.5rem); letter-spacing: -0.01em; color: var(--krill); padding-top: 3.5rem; }
+  h1 span { display: block; color: var(--foam); }
+  h2 { font-size: clamp(1.8rem, 5vw, 2.75rem); }
+  p { margin: 0; }
+  .lede { margin-top: 1.25rem; color: var(--bubble); font-size: 1.125rem; max-width: 40rem; }
+  .sub { color: var(--bubble); margin-top: 0.5rem; max-width: 42rem; }
+  button, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--lantern); outline-offset: 2px; }
+
+  /* Ranking */
+  .board-head { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-top: 3rem; }
+  .modes { display: inline-flex; background: var(--trench); border-radius: 999px; padding: 4px; }
+  .modes button { border: 0; background: none; padding: 0.5rem 1.1rem; border-radius: 999px; font-weight: 600; color: var(--bubble); cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--krill); color: var(--trench); }
+  table { border-collapse: collapse; width: 100%; }
+  .board { margin-top: 1rem; }
+  .board th { font-weight: 500; font-size: 0.875rem; color: var(--bubble); text-align: right; padding: 0 0.75rem 0.5rem; white-space: nowrap; }
+  .board th.left { text-align: left; }
+  .board td { padding: 0.55rem 0.75rem; text-align: right; border-top: 2px solid var(--midwater); background: var(--trench); white-space: nowrap; }
+  .board tr td:first-child { border-radius: 12px 0 0 12px; }
+  .board tr td:last-child { border-radius: 0 12px 12px 0; }
+  .board .rank { font-family: var(--display); font-size: 1.6rem; line-height: 1; width: 3rem; text-align: center; color: var(--bubble); }
+  .board tr.first .rank { color: var(--lantern); font-size: 2.1rem; }
+  .board .name { text-align: left; font-weight: 700; font-size: 1.125rem; width: 7rem; }
+  .board .barcell { width: 40%; padding-right: 0; }
+  .track { height: 14px; }
+  .bar { height: 100%; background: var(--krill); border-radius: 0 4px 4px 0; width: 0; transition: width 0.6s cubic-bezier(.2,.7,.2,1); }
+  .board td.on { font-weight: 700; font-size: 1.125rem; color: var(--foam); }
+  .board td.off { color: var(--bubble); }
+  .board tr.unranked td { background: transparent; border-top: 2px dashed var(--current); }
+  .board tr.unranked .bar { background: var(--current); }
+  .board tr.unranked .rank { font-family: var(--body); font-size: 0.875rem; }
+  .up { color: #9be7c0; } .down { color: var(--krill); }
+
+  /* One game */
+  .game-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+  .pager { display: inline-flex; gap: 0.5rem; margin-left: auto; align-items: center; }
+  .pager button, .pager select { background: var(--trench); border: 0; border-radius: 999px; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; }
+  .pager button:disabled { opacity: 0.35; cursor: default; }
+  .results { list-style: none; margin: 1.25rem 0 0; padding: 0; }
+  .results li { display: grid; grid-template-columns: 2.5rem 6rem 1fr auto; gap: 0.25rem 1rem; align-items: center; padding: 0.7rem 0; border-top: 1px solid var(--current); }
+  .results .place { font-family: var(--display); font-size: 1.4rem; color: var(--bubble); text-align: center; }
+  .results li.win .place { color: var(--lantern); }
+  .results .who { font-weight: 700; }
+  .results .strip { font-size: 1.6rem; letter-spacing: 0.12em; line-height: 1; white-space: nowrap; }
+  .results .pts { font-weight: 700; font-size: 1.25rem; }
+  .key { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 1.25rem; color: var(--bubble); font-size: 0.9375rem; }
+  .key b { color: var(--foam); font-weight: 600; }
+
+  /* Every score */
+  .scroll { overflow-x: auto; margin-top: 1.25rem; border-radius: 12px; background: var(--trench); padding: 0.75rem; }
+  .grid { width: auto; border-collapse: separate; border-spacing: 2px; }
+  .grid th { font-weight: 500; font-size: 0.8125rem; color: var(--bubble); padding: 0 0 0.25rem; min-width: 2.6rem; }
+  .grid th[scope="row"] { position: sticky; left: 0; background: var(--trench); text-align: left; padding: 0 0.75rem 0 0.25rem; font-size: 0.9375rem; font-weight: 600; color: var(--foam); z-index: 1; }
+  .grid td { padding: 0; }
+  .grid button { display: block; width: 100%; min-width: 2.6rem; height: 2rem; border: 0; border-radius: 4px; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+  .grid button.win { box-shadow: inset 0 0 0 2px var(--lantern); }
+  .grid button.sel { outline: 2px solid var(--foam); outline-offset: 0; }
+  .grid td.none { background: transparent; }
+  .scale { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; color: var(--bubble); font-size: 0.875rem; flex-wrap: wrap; }
+  .scale i { display: inline-block; width: 9rem; height: 10px; border-radius: 4px; }
+  .scale .ring { width: 1rem; height: 1rem; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--lantern); margin-left: 1rem; }
+
+  /* Answer mix */
+  .mix { margin-top: 1.25rem; display: grid; grid-template-columns: 6rem 1fr; gap: 0.6rem 1rem; align-items: center; }
+  .mix .who { font-weight: 600; }
+  .stack { display: flex; gap: 2px; height: 18px; }
+  .stack span { border-radius: 3px; min-width: 3px; }
+
+  /* Records */
+  .records { margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.75rem 2.5rem; }
+  .records dt { color: var(--bubble); font-size: 0.9375rem; }
+  .records dd { margin: 0.15rem 0 0; }
+  .records dd strong { font-family: var(--display); font-weight: 400; font-size: 1.75rem; line-height: 1.1; display: block; }
+  .records dd span { color: var(--bubble); }
+
+  footer { margin-top: 5rem; color: var(--bubble); font-size: 0.875rem; }
+  code { font-family: ui-monospace, Menlo, monospace; background: var(--trench); padding: 0.1em 0.4em; border-radius: 4px; }
+  .empty { margin-top: 3rem; font-size: 1.25rem; }
+
+  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--foam); color: var(--trench); padding: 0.5rem 0.7rem; border-radius: 8px; font-size: 0.875rem; line-height: 1.35; max-width: 16rem; box-shadow: 0 6px 20px rgba(3, 20, 40, 0.45); opacity: 0; transition: opacity 0.1s; }
+  #tip.show { opacity: 1; }
+  #tip b { display: block; font-size: 1rem; }
+
+  @media (max-width: 720px) {
+    .board .opt { display: none; }
+    .board .barcell { width: 50%; }
+    .board .name { width: auto; }
+    .results li { grid-template-columns: 2rem 1fr auto; }
+    .results .strip { grid-column: 2 / 4; font-size: 1.35rem; }
+    .results .who { grid-column: 2; grid-row: 1; }
+    .results .pts { grid-column: 3; grid-row: 1; }
+    .pager { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .bar, #tip { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main id="app">
+  <h1>Krillion <span>leaderboard</span></h1>
+  <p class="lede" id="lede"></p>
+</main>
+<div id="tip" role="status"></div>
+
+<script src="data.js"></script>
+<script>
+(() => {
+  const app = document.getElementById('app');
+  const data = window.KRILLION;
+  if (!data || !data.rows || !data.rows.length) {
+    app.insertAdjacentHTML('beforeend',
+      '<p class="empty">No scores yet. Run <code>./update.sh</code> in this folder to pull them from Messages.</p>');
+    return;
+  }
+
+  // Points per answer, worked out from the posted scores (they fit exactly).
+  const TIERS = [
+    { e: '🌟', pts: 100, color: '#f4fffb' },
+    { e: '🏮', pts: 85,  color: '#bdf0e6' },
+    { e: '🦑', pts: 60,  color: '#7fd3d6' },
+    { e: '🐟', pts: 30,  color: '#4aa3c2' },
+    { e: '🤡', pts: 15,  color: '#3a84b0' },
+    { e: '🫧', pts: 10,  color: '#2f6a9c' },
+    { e: '⬛', pts: 0,   color: '#1f4f80' },
+  ];
+  const MIN_GAMES = 5; // games needed to be ranked by average
+  const rows = data.rows;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const fmtDay = s => new Date(s.replace(' ', 'T')).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  // ---- Games ----
+  const games = new Map();
+  for (const r of rows) {
+    if (!games.has(r.game)) games.set(r.game, []);
+    games.get(r.game).push(r);
+  }
+  const gameNos = [...games.keys()].sort((a, b) => a - b);
+  const winners = new Map(); // game -> { top, names, margin }
+  for (const [g, list] of games) {
+    list.sort((a, b) => b.score - a.score || a.sent.localeCompare(b.sent));
+    if (list.length < 2) continue; // nobody to beat
+    const top = list[0].score;
+    const names = list.filter(r => r.score === top).map(r => r.player);
+    const second = list.find(r => r.score < top);
+    winners.set(g, { top, names, margin: second ? top - second.score : 0 });
+  }
+
+  // ---- Players ----
+  const byPlayer = new Map();
+  for (const r of rows) {
+    if (!byPlayer.has(r.player)) byPlayer.set(r.player, []);
+    byPlayer.get(r.player).push(r);
+  }
+  const players = [...byPlayer].map(([name, list]) => {
+    list.sort((a, b) => a.game - b.game);
+    const scores = list.map(r => r.score);
+    const avg = mean(scores);
+    const counts = {};
+    list.forEach(r => r.results.forEach(e => counts[e] = (counts[e] || 0) + 1));
+    let streak = 0, run = 0, prev = null;
+    for (const r of list) { run = prev !== null && r.game === prev + 1 ? run + 1 : 1; streak = Math.max(streak, run); prev = r.game; }
+    return {
+      name, list, avg,
+      games: list.length,
+      total: scores.reduce((a, b) => a + b, 0),
+      best: Math.max(...scores),
+      wins: [...winners.values()].filter(w => w.names.includes(name)).length,
+      form: list.length >= MIN_GAMES + 3 ? mean(scores.slice(-5)) - avg : null,
+      spread: Math.sqrt(mean(scores.map(s => (s - avg) ** 2))),
+      counts, answers: list.length * 7, streak,
+    };
+  });
+
+  const first = rows.reduce((a, r) => r.sent < a ? r.sent : a, rows[0].sent);
+  const last = rows.reduce((a, r) => r.sent > a ? r.sent : a, rows[0].sent);
+  document.getElementById('lede').textContent =
+    `${rows.length} scores from ${players.length} players across games #${gameNos[0]} to #${gameNos.at(-1)}, ${fmtDay(first)} to ${fmtDay(last)}.`;
+
+  // ---- Ranking ----
+  const MODES = {
+    avg:   { label: 'Average', val: p => p.avg,   fmt: v => Math.round(v), note: `Average score per game. Players with fewer than ${MIN_GAMES} games sit below the line until they catch up.` },
+    total: { label: 'Total',   val: p => p.total, fmt: v => v.toLocaleString(), note: 'Every point scored, so showing up counts.' },
+    wins:  { label: 'Wins',    val: p => p.wins,  fmt: v => v, note: 'Days with the top score in the chat. Ties count for everyone tied.' },
+  };
+  let mode = 'avg';
+  app.insertAdjacentHTML('beforeend', `
+    <div class="board-head">
+      <p class="sub" id="modeNote" style="margin:0"></p>
+      <div class="modes" role="group" aria-label="Rank by">
+        ${Object.entries(MODES).map(([k, m]) => `<button type="button" data-mode="${k}">${m.label}</button>`).join('')}
+      </div>
+    </div>
+    <table class="board" id="board"></table>`);
+  const board = document.getElementById('board');
+
+  function drawBoard(animate) {
+    const m = MODES[mode];
+    const ranked = players.filter(p => mode !== 'avg' || p.games >= MIN_GAMES)
+      .sort((a, b) => m.val(b) - m.val(a) || b.avg - a.avg);
+    const rest = players.filter(p => !ranked.includes(p)).sort((a, b) => b.games - a.games);
+    const max = Math.max(...players.map(m.val), 1);
+    const cell = (k, v) => `<td class="${k === mode ? 'on' : 'off opt'}">${v}</td>`;
+    const row = (p, i) => {
+      const unranked = i === null;
+      // tied values share a rank
+      const rank = unranked ? '' : ranked.findIndex(q => m.val(q) === m.val(p)) + 1;
+      const form = p.form === null ? '' : `<span class="${p.form >= 0 ? 'up' : 'down'}">${p.form >= 0 ? '+' : '−'}${Math.abs(Math.round(p.form))}</span>`;
+      return `<tr class="${unranked ? 'unranked' : rank === 1 ? 'first' : ''}">
+        <td class="rank">${unranked ? `${MIN_GAMES - p.games} to go` : rank}</td>
+        <td class="name">${esc(p.name)}</td>
+        <td class="barcell"><div class="track"><div class="bar" data-w="${(m.val(p) / max * 100).toFixed(1)}"></div></div></td>
+        ${cell('avg', Math.round(p.avg))}${cell('total', p.total.toLocaleString())}${cell('wins', p.wins)}
+        <td class="off opt">${p.games}</td><td class="off opt">${p.best}</td><td class="off opt">${form}</td>
+      </tr>`;
+    };
+    const th = (k, t) => `<th scope="col" class="${k === mode ? '' : 'opt'}">${t}</th>`;
+    board.innerHTML = `<thead><tr>
+        <th scope="col"><span hidden>Rank</span></th><th scope="col" class="left">Player</th><th scope="col"></th>
+        ${th('avg', 'Average')}${th('total', 'Total')}${th('wins', 'Wins')}
+        <th scope="col" class="opt">Games</th><th scope="col" class="opt">Best</th><th scope="col" class="opt">Last 5 vs average</th>
+      </tr></thead>
+      <tbody>${ranked.map((p, i) => row(p, i)).join('')}${rest.map(p => row(p, null)).join('')}</tbody>`;
+    document.getElementById('modeNote').textContent = m.note;
+    document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode));
+    const bars = board.querySelectorAll('.bar');
+    const grow = () => bars.forEach(b => b.style.width = b.dataset.w + '%');
+    animate ? requestAnimationFrame(() => requestAnimationFrame(grow)) : grow();
+  }
+  document.querySelector('.modes').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    mode = b.dataset.mode; drawBoard(true);
+  });
+  drawBoard(true);
+
+  // ---- One game ----
+  app.insertAdjacentHTML('beforeend', `
+    <section id="game">
+      <div class="game-head">
+        <h2 id="gameTitle"></h2>
+        <div class="pager">
+          <button type="button" id="prev">Earlier</button>
+          <select id="pick" aria-label="Choose a game">${gameNos.map(g => `<option value="${g}">#${g}</option>`).join('')}</select>
+          <button type="button" id="next">Later</button>
+        </div>
+      </div>
+      <p class="sub" id="gameSub"></p>
+      <ol class="results" id="results"></ol>
+      <div class="key" aria-label="Points per answer">
+        ${TIERS.map(t => `<span>${t.e} <b>${t.pts}</b></span>`).join('')}
+        <span>points per answer, worked out from the posted scores</span>
+      </div>
+    </section>`);
+  let current = gameNos.at(-1);
+  function drawGame() {
+    const list = games.get(current), w = winners.get(current);
+    document.getElementById('gameTitle').textContent = `Game #${current}`;
+    document.getElementById('gameSub').textContent =
+      `${fmtDay(list[0].sent)}. ` + (w
+        ? `${w.names.join(' and ')} ${w.names.length > 1 ? 'tied' : 'won'} with ${w.top}${w.margin && w.names.length === 1 ? `, ${w.margin} clear of second` : ''}.`
+        : 'Only one score posted, so no winner.');
+    document.getElementById('results').innerHTML = list.map(r => {
+      const place = list.findIndex(q => q.score === r.score) + 1;
+      return `<li class="${w && r.score === w.top ? 'win' : ''}">
+        <span class="place">${place}</span><span class="who">${esc(r.player)}</span>
+        <span class="strip" aria-label="Answers: ${r.results.join(' ')}">${r.results.join('')}</span>
+        <span class="pts">${r.score}</span></li>`;
+    }).join('');
+    const i = gameNos.indexOf(current);
+    document.getElementById('prev').disabled = i === 0;
+    document.getElementById('next').disabled = i === gameNos.length - 1;
+    document.getElementById('pick').value = current;
+    document.querySelectorAll('.grid button.sel').forEach(b => b.classList.remove('sel'));
+    document.querySelectorAll(`.grid button[data-game="${current}"]`).forEach(b => b.classList.add('sel'));
+  }
+  const step = d => { current = gameNos[gameNos.indexOf(current) + d]; drawGame(); };
+  document.getElementById('prev').onclick = () => step(-1);
+  document.getElementById('next').onclick = () => step(1);
+  document.getElementById('pick').onchange = e => { current = +e.target.value; drawGame(); };
+
+  // ---- Every score ----
+  const lo = Math.min(...rows.map(r => r.score)), hi = Math.max(...rows.map(r => r.score));
+  const STOPS = [[23, 70, 115], [46, 127, 166], [127, 214, 216], [236, 253, 246]];
+  const heat = s => {
+    const t = hi === lo ? 1 : (s - lo) / (hi - lo), x = t * (STOPS.length - 1);
+    const i = Math.min(Math.floor(x), STOPS.length - 2), f = x - i;
+    const c = STOPS[i].map((v, k) => Math.round(v + (STOPS[i + 1][k] - v) * f));
+    return { bg: `rgb(${c})`, fg: t > 0.42 ? '#072a4c' : '#eef8f8' };
+  };
+  const order = [...players].sort((a, b) => b.games - a.games || b.avg - a.avg);
+  app.insertAdjacentHTML('beforeend', `
+    <section>
+      <h2>Every score</h2>
+      <p class="sub">Brighter is higher. Pick any score to see that day's game.</p>
+      <div class="scroll" tabindex="0" aria-label="Scores by player and game, scrollable">
+        <table class="grid">
+          <thead><tr><th></th>${gameNos.map(g => `<th scope="col">${g}</th>`).join('')}</tr></thead>
+          <tbody>${order.map(p => {
+            const mine = new Map(p.list.map(r => [r.game, r]));
+            return `<tr><th scope="row">${esc(p.name)}</th>${gameNos.map(g => {
+              const r = mine.get(g); if (!r) return '<td class="none"></td>';
+              const c = heat(r.score), w = winners.get(g), won = w && w.top === r.score;
+              const tip = `<b>${esc(p.name)}, game #${g}</b>${r.score} points${won ? ', top score' : ''}<br>${r.results.join('')}`;
+              return `<td><button type="button" class="${won ? 'win' : ''}" data-game="${g}" data-tip="${esc(tip)}" style="background:${c.bg};color:${c.fg}">${r.score}</button></td>`;
+            }).join('')}</tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+      <div class="scale">
+        <span>${lo}</span><i style="background:linear-gradient(90deg,${STOPS.map(c => `rgb(${c})`).join(',')})"></i><span>${hi}</span>
+        <span class="ring"></span><span>top score that day</span>
+      </div>
+    </section>`);
+  const scroller = document.querySelector('.scroll');
+  scroller.scrollLeft = scroller.scrollWidth; // start on the latest games
+  document.querySelector('.grid').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    current = +b.dataset.game; drawGame();
+    document.getElementById('game').scrollIntoView({ block: 'start' });
+  });
+
+  // ---- Answer mix ----
+  const mixOrder = [...players].sort((a, b) => b.avg - a.avg);
+  app.insertAdjacentHTML('beforeend', `
+    <section>
+      <h2>How the points get made</h2>
+      <p class="sub">Each player's answers by what they earned, best on the left.</p>
+      <div class="mix">${mixOrder.map(p => `
+        <span class="who">${esc(p.name)}</span>
+        <div class="stack">${TIERS.filter(t => p.counts[t.e]).map(t => {
+          const n = p.counts[t.e], pct = n / p.answers * 100;
+          return `<span style="flex:${n};background:${t.color}" tabindex="0" data-tip="${esc(`<b>${esc(p.name)}</b>${t.e} ${n} of ${p.answers} answers (${pct.toFixed(0)}%), ${t.pts} points each`)}"></span>`;
+        }).join('')}</div>`).join('')}
+      </div>
+      <div class="key">${TIERS.map(t => `<span><i style="display:inline-block;width:0.8rem;height:0.8rem;border-radius:3px;background:${t.color};vertical-align:-1px"></i> ${t.e} <b>${t.pts}</b></span>`).join('')}</div>
+    </section>`);
+
+  // ---- Records ----
+  const top = rows.reduce((a, r) => r.score > a.score ? r : a);
+  const low = rows.reduce((a, r) => r.score < a.score ? r : a);
+  const qualified = players.filter(p => p.games >= MIN_GAMES);
+  const pick = (list, f) => list.reduce((a, p) => f(p) > f(a) ? p : a);
+  const rate = e => p => (p.counts[e] || 0) / p.answers;
+  const [blowoutGame, blowout] = [...winners].reduce((a, b) => b[1].margin > a[1].margin ? b : a);
+  const firstIn = {};
+  for (const [, list] of games) if (list.length > 1) {
+    const f = list.reduce((a, r) => r.sent < a.sent ? r : a).player;
+    firstIn[f] = (firstIn[f] || 0) + 1;
+  }
+  const early = Object.entries(firstIn).sort((a, b) => b[1] - a[1])[0];
+  const steady = pick(qualified, p => -p.spread), wild = pick(qualified, p => p.spread);
+  const lanterns = pick(qualified, rate('🏮')), blanks = pick(qualified, rate('⬛')), streaker = pick(players, p => p.streak);
+  const recs = [
+    ['Highest score', `${top.score}`, `${top.player}, game #${top.game}`],
+    ['Lowest score', `${low.score}`, `${low.player}, game #${low.game}`],
+    ['Biggest winning margin', `${blowout.margin} points`, `${blowout.names[0]}, game #${blowoutGame}`],
+    ['Most lanterns per game', `${(rate('🏮')(lanterns) * 7).toFixed(1)} 🏮`, lanterns.name],
+    ['Most blanks per game', `${(rate('⬛')(blanks) * 7).toFixed(1)} ⬛`, blanks.name],
+    ['Longest run without missing a day', `${streaker.streak} games`, streaker.name],
+    ['First to post most often', `${early[1]} days`, early[0]],
+    ['Steadiest scores', steady.name, `usually within ${Math.round(steady.spread)} of their average`],
+    ['Wildest swings', wild.name, `usually within ${Math.round(wild.spread)} of their average`],
+  ];
+  app.insertAdjacentHTML('beforeend', `
+    <section>
+      <h2>Records</h2>
+      <dl class="records">${recs.map(([k, v, d]) => `<div><dt>${k}</dt><dd><strong>${esc(v)}</strong><span>${esc(d)}</span></dd></div>`).join('')}</dl>
+    </section>
+    <footer>
+      <p>Updated ${esc(data.built)}. A player's first post for a game is the one that counts${data.repeatPostsIgnored ? `, so ${data.repeatPostsIgnored} repeat posts were left out` : ''}. Run <code>./update.sh</code> to pull new scores.</p>
+    </footer>`);
+
+  drawGame();
+
+  // ---- Shared tooltip ----
+  const tip = document.getElementById('tip');
+  const show = el => {
+    tip.innerHTML = el.dataset.tip; tip.classList.add('show');
+    const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
+    const y = r.top - t.height - 8 < 8 ? r.bottom + 8 : r.top - t.height - 8;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  };
+  const hide = () => tip.classList.remove('show');
+  for (const [on, off] of [['pointerover', 'pointerout'], ['focusin', 'focusout']]) {
+    document.addEventListener(on, e => { const el = e.target.closest?.('[data-tip]'); if (el) show(el); });
+    document.addEventListener(off, e => { if (e.target.closest?.('[data-tip]')) hide(); });
+  }
+  addEventListener('scroll', hide, true);
+})();
+</script>
+</body>
+</html>

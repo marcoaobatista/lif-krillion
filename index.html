@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Krillion leaderboard</title>
+<meta name="description" content="Daily scores, wins and records from the group chat.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Krillion leaderboard">
+<meta property="og:description" content="Daily scores, wins and records from the group chat.">
+<meta property="og:url" content="https://marcoaobatista.github.io/lif-krillion/">
+<meta property="og:image" content="https://marcoaobatista.github.io/lif-krillion/cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,6 +56,13 @@
   .modes { display: inline-flex; background: var(--trench); border-radius: 999px; padding: 4px; }
   .modes button { border: 0; background: none; padding: 0.5rem 1.1rem; border-radius: 999px; font-weight: 600; color: var(--bubble); cursor: pointer; }
   .modes button[aria-pressed="true"] { background: var(--krill); color: var(--trench); }
+  .shared { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem; margin-top: 1rem; min-height: 2.25rem; }
+  .check { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; }
+  .check input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: var(--krill); cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chips[hidden] { display: none; }
+  .chips button { border: 2px solid var(--current); background: none; color: var(--bubble); border-radius: 999px; padding: 0.2rem 0.8rem; font-weight: 600; font-size: 0.9375rem; cursor: pointer; }
+  .chips button[aria-pressed="true"] { background: var(--foam); border-color: var(--foam); color: var(--trench); }
   table { border-collapse: collapse; width: 100%; }
   .board { margin-top: 1rem; }
   .board th { font-weight: 500; font-size: 0.875rem; color: var(--bubble); text-align: right; padding: 0 0.75rem 0.5rem; white-space: nowrap; }
@@ -82,13 +99,14 @@
   .key b { color: var(--foam); font-weight: 600; }
 
   /* Every score */
-  .scroll { overflow-x: auto; margin-top: 1.25rem; border-radius: 12px; background: var(--trench); padding: 0.75rem; }
+  .scroll { overflow-x: auto; margin-top: 1.25rem; border-radius: 12px; background: var(--trench); padding: 0.75rem 0.75rem 0.75rem 0; }
   .grid { width: auto; border-collapse: separate; border-spacing: 2px; }
   .grid th { font-weight: 500; font-size: 0.8125rem; color: var(--bubble); padding: 0 0 0.25rem; min-width: 2.6rem; }
-  .grid th[scope="row"] { position: sticky; left: 0; background: var(--trench); text-align: left; padding: 0 0.75rem 0 0.25rem; font-size: 0.9375rem; font-weight: 600; color: var(--foam); z-index: 1; }
+  .grid th[scope="row"] { position: sticky; left: 0; background: var(--trench); text-align: left; padding: 0 0.75rem 0 1rem; box-shadow: -4px 0 0 var(--trench); font-size: 0.9375rem; font-weight: 600; color: var(--foam); z-index: 1; }
   .grid td { padding: 0; }
   .grid button { display: block; width: 100%; min-width: 2.6rem; height: 2rem; border: 0; border-radius: 4px; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
   .grid button.win { box-shadow: inset 0 0 0 2px var(--lantern); }
+  .grid button.dim { opacity: 0.25; }
   .grid button.sel { outline: 2px solid var(--foam); outline-offset: 0; }
   .grid td.none { background: transparent; }
   .scale { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; color: var(--bubble); font-size: 0.875rem; flex-wrap: wrap; }
@@ -166,13 +184,13 @@
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const fmtDay = s => new Date(s.replace(' ', 'T')).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-  // ---- Games ----
+  // ---- Games and players, for any set of scores ----
+  function summarize(rows) {
   const games = new Map();
   for (const r of rows) {
     if (!games.has(r.game)) games.set(r.game, []);
     games.get(r.game).push(r);
   }
-  const gameNos = [...games.keys()].sort((a, b) => a - b);
   const winners = new Map(); // game -> { top, names, margin }
   for (const [g, list] of games) {
     list.sort((a, b) => b.score - a.score || a.sent.localeCompare(b.sent));
@@ -208,6 +226,10 @@
       counts, answers: list.length * 7, streak,
     };
   });
+  return { games, winners, players };
+  }
+  const { games, winners, players } = summarize(rows);
+  const gameNos = [...games.keys()].sort((a, b) => a - b);
 
   const first = rows.reduce((a, r) => r.sent < a ? r.sent : a, rows[0].sent);
   const last = rows.reduce((a, r) => r.sent > a ? r.sent : a, rows[0].sent);
@@ -228,15 +250,56 @@
         ${Object.entries(MODES).map(([k, m]) => `<button type="button" data-mode="${k}">${m.label}</button>`).join('')}
       </div>
     </div>
+    <div class="shared">
+      <label class="check"><input type="checkbox" id="sharedToggle"> Only count days everyone posted</label>
+      <div class="chips" id="chips" role="group" aria-label="Players to compare" hidden></div>
+    </div>
     <table class="board" id="board"></table>`);
   const board = document.getElementById('board');
 
+  // Shared days: compare a group only on the days every one of them posted.
+  const byGames = [...players].sort((a, b) => b.games - a.games || b.avg - a.avg);
+  const sharedDays = names => gameNos.filter(g => {
+    const there = new Set(games.get(g).map(r => r.player));
+    return [...names].every(n => there.has(n));
+  });
+  let shared = false;
+  // No single day has a score from every player, so start from the regulars
+  // and drop the least active until the group has a few days in common.
+  const chosen = new Set(byGames.filter(p => p.games >= MIN_GAMES).map(p => p.name));
+  for (const p of [...byGames].reverse()) {
+    if (chosen.size <= 2 || sharedDays(chosen).length >= 5) break;
+    chosen.delete(p.name);
+  }
+  const chips = document.getElementById('chips');
+  chips.innerHTML = byGames.map(p => `<button type="button" data-name="${esc(p.name)}">${esc(p.name)}</button>`).join('');
+  document.getElementById('sharedToggle').addEventListener('change', e => {
+    shared = e.target.checked; chips.hidden = !shared; drawBoard(true);
+  });
+  chips.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    chosen.has(b.dataset.name) ? chosen.delete(b.dataset.name) : chosen.add(b.dataset.name);
+    drawBoard(true);
+  });
+
   function drawBoard(animate) {
     const m = MODES[mode];
-    const ranked = players.filter(p => mode !== 'avg' || p.games >= MIN_GAMES)
+    let view = players, minGames = MIN_GAMES, note = m.note, days = null;
+    if (shared) {
+      days = new Set(chosen.size >= 2 ? sharedDays(chosen) : []);
+      view = days.size ? summarize(rows.filter(r => chosen.has(r.player) && days.has(r.game))).players : [];
+      minGames = 0; // everyone has the same number of games here
+      note = chosen.size < 2 ? 'Pick at least two players to compare.'
+        : days.size ? `Counting only the ${days.size} ${days.size === 1 ? 'day' : 'days'} when all ${chosen.size} of these players posted. Wins are among them. Dimmed scores in the grid below are left out.`
+        : `No day has a score from all ${chosen.size} of these players. Drop one to find days they share.`;
+    }
+    chips.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', chosen.has(b.dataset.name)));
+    document.querySelectorAll('.grid button').forEach(b =>
+      b.classList.toggle('dim', shared && !(days.has(+b.dataset.game) && chosen.has(b.dataset.player))));
+    const ranked = view.filter(p => mode !== 'avg' || p.games >= minGames)
       .sort((a, b) => m.val(b) - m.val(a) || b.avg - a.avg);
-    const rest = players.filter(p => !ranked.includes(p)).sort((a, b) => b.games - a.games);
-    const max = Math.max(...players.map(m.val), 1);
+    const rest = view.filter(p => !ranked.includes(p)).sort((a, b) => b.games - a.games);
+    const max = Math.max(...view.map(m.val), 1);
     const cell = (k, v) => `<td class="${k === mode ? 'on' : 'off opt'}">${v}</td>`;
     const row = (p, i) => {
       const unranked = i === null;
@@ -258,7 +321,7 @@
         <th scope="col" class="opt">Games</th><th scope="col" class="opt">Best</th><th scope="col" class="opt">Last 5 vs average</th>
       </tr></thead>
       <tbody>${ranked.map((p, i) => row(p, i)).join('')}${rest.map(p => row(p, null)).join('')}</tbody>`;
-    document.getElementById('modeNote').textContent = m.note;
+    document.getElementById('modeNote').textContent = note;
     document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode));
     const bars = board.querySelectorAll('.bar');
     const grow = () => bars.forEach(b => b.style.width = b.dataset.w + '%');
@@ -338,7 +401,7 @@
               const r = mine.get(g); if (!r) return '<td class="none"></td>';
               const c = heat(r.score), w = winners.get(g), won = w && w.top === r.score;
               const tip = `<b>${esc(p.name)}, game #${g}</b>${r.score} points${won ? ', top score' : ''}<br>${r.results.join('')}`;
-              return `<td><button type="button" class="${won ? 'win' : ''}" data-game="${g}" data-tip="${esc(tip)}" style="background:${c.bg};color:${c.fg}">${r.score}</button></td>`;
+              return `<td><button type="button" class="${won ? 'win' : ''}" data-game="${g}" data-player="${esc(p.name)}" data-tip="${esc(tip)}" style="background:${c.bg};color:${c.fg}">${r.score}</button></td>`;
             }).join('')}</tr>`;
           }).join('')}</tbody>
         </table>
